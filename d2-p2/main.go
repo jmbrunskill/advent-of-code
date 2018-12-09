@@ -43,12 +43,12 @@ func processInput(f io.Reader) string {
 // SuffixTree implements a special purpose suffix tree, returns string when single character miss match found
 // Assumes all inputs are the same length
 type SuffixTree struct {
-	m map[byte]*SuffixTreeNode
+	m map[byte]*suffixTreeNode
 }
 
-type SuffixTreeNode struct {
+type suffixTreeNode struct {
 	path string
-	m    map[byte]*SuffixTreeNode
+	m    map[byte]*suffixTreeNode
 }
 
 func (t *SuffixTree) findOrAddString(str string) (string, bool) {
@@ -56,18 +56,18 @@ func (t *SuffixTree) findOrAddString(str string) (string, bool) {
 	thisSuffix := str[1:]
 
 	if t.m == nil {
-		t.m = make(map[byte]*SuffixTreeNode)
+		t.m = make(map[byte]*suffixTreeNode)
 	}
 
 	if t.m[thisChar] == nil {
 		// fmt.Printf("findOrAddString(%v) - adding %s => %v \n", str, string(thisChar), thisSuffix)
-		t.m[thisChar] = &SuffixTreeNode{path: string(thisChar)}
+		t.m[thisChar] = &suffixTreeNode{path: string(thisChar)}
 		// fmt.Printf("Added N:%v\n", t.m[thisChar].path)
 	}
 	return t.m[thisChar].findOrAddString(thisSuffix, string(thisChar))
 }
 
-func (t *SuffixTreeNode) findOrAddString(str, matched string) (string, bool) {
+func (t *suffixTreeNode) findOrAddString(str, matched string) (string, bool) {
 
 	// fmt.Printf("N:%v - findOrAddString(%v,%v)\n", t.path, str, matched)
 	if len(str) == 0 {
@@ -83,7 +83,7 @@ func (t *SuffixTreeNode) findOrAddString(str, matched string) (string, bool) {
 	//make map if not already created
 	if t.m == nil {
 		// fmt.Printf("N:%v - making map\n", t.path)
-		t.m = make(map[byte]*SuffixTreeNode)
+		t.m = make(map[byte]*suffixTreeNode)
 	}
 
 	if t.suffixRangeMatch(myFirstChar, mySuffix) {
@@ -93,7 +93,7 @@ func (t *SuffixTreeNode) findOrAddString(str, matched string) (string, bool) {
 
 	//No match, so add to the tree
 	if t.m[myFirstChar] == nil {
-		t.m[myFirstChar] = &SuffixTreeNode{path: (t.path + string(myFirstChar))}
+		t.m[myFirstChar] = &suffixTreeNode{path: (t.path + string(myFirstChar))}
 		// fmt.Printf("Added N:%s to %s\n", t.m[myFirstChar].path, string(myFirstChar))
 	}
 
@@ -102,7 +102,7 @@ func (t *SuffixTreeNode) findOrAddString(str, matched string) (string, bool) {
 }
 
 //This function checks for exact match one character downstream
-func (t *SuffixTreeNode) suffixRangeMatch(currentChar byte, str string) bool {
+func (t *suffixTreeNode) suffixRangeMatch(currentChar byte, str string) bool {
 	if len(str) == 0 {
 		// fmt.Printf("N:%v - suffixRangeMatch(%v) - empty string is not a match\n", t.path, str)
 		return false
@@ -125,7 +125,7 @@ func (t *SuffixTreeNode) suffixRangeMatch(currentChar byte, str string) bool {
 }
 
 //Checks to see if suffix is in the tree
-func (t *SuffixTreeNode) suffixMatch(str string) bool {
+func (t *suffixTreeNode) suffixMatch(str string) bool {
 	// fmt.Printf("N:%v - suffixMatch(%v)\n", t.path, str)
 
 	if len(str) == 0 {
