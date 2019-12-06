@@ -69,7 +69,7 @@ func extractParam(input []int, location int, mode int) int {
 func runIntCode(input, code []int) ([]int, []int, error) {
 	//Start at location 0 for the opcode
 	instrucPtr := 0
-	// fmt.Println("Processing input ", code, len(code))
+	// fmt.Printf("Processing input %v %v\n", code, input)
 	maxIterations := len(code) * 10 //Safeguard from infinite loop, I just assume 10 times the number of items in the input is a safe bet
 
 	outputs := []int{}
@@ -79,7 +79,7 @@ func runIntCode(input, code []int) ([]int, []int, error) {
 	for i := 0; i < maxIterations; i++ {
 
 		if len(code) <= instrucPtr {
-			return nil, nil, fmt.Errorf("Error invalid instrucPtration %v", instrucPtr)
+			return nil, nil, fmt.Errorf("Error invalid instrucPtr %v", instrucPtr)
 		}
 
 		inst = decodeInstruction(code[instrucPtr])
@@ -91,27 +91,82 @@ func runIntCode(input, code []int) ([]int, []int, error) {
 			outLoc := code[instrucPtr+3]
 			code[outLoc] = n1 + n2
 			instrucPtr += 4 //move to next opcode
-			// fmt.Printf("Encountered an addition operation at %d %d * %d into %d\n", instrucPtr, n1, n2, outLoc)
+			// fmt.Printf("Addition at %d %d * %d into %d\n", instrucPtr, n1, n2, outLoc)
 		case 2:
 			n1 := extractParam(code, instrucPtr+1, inst.ParameterMode1)
 			n2 := extractParam(code, instrucPtr+2, inst.ParameterMode2)
 			outLoc := code[instrucPtr+3]
 			code[outLoc] = n1 * n2
 			instrucPtr += 4 //move to next opcode
-			// fmt.Printf("Encountered an multiply operation at %d %d * %d into %d\n", instrucPtr, n1, n2, outLoc)
+			// fmt.Printf("Multiply at %d %d * %d into %d\n", instrucPtr, n1, n2, outLoc)
 		case 3:
 			x, input = input[0], input[1:] //Pop off the input
 			outLoc := code[instrucPtr+1]
 			code[outLoc] = x
+			// fmt.Printf("Input at %d into %d\n", instrucPtr, outLoc)
 			instrucPtr += 2 //move to next opcode
-			// fmt.Printf("Input at %d %d * %d into %d\n", instrucPtr, n1, n2, outLoc)
 		case 4:
 			// fmt.Printf("Output at %d - %v - %v len(%v)\n", instrucPtr, code[instrucPtr], inst, len(code))
 			p1 := extractParam(code, instrucPtr+1, inst.ParameterMode1)
 			// fmt.Printf("OUTPUT %v\n", p1)
 			outputs = append(outputs, p1)
 			instrucPtr += 2 //move to next opcode
-			// fmt.Printf("Output at %d %d * %d into %d\n", instrucPtr, n1, n2, outLoc)
+		case 5:
+			/*
+				Opcode 5 is jump-if-true: if the first parameter is non-zero, it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
+			*/
+			// fmt.Printf("jump-if-true at %d - %d\n", instrucPtr, code[instrucPtr])
+			p1 := extractParam(code, instrucPtr+1, inst.ParameterMode1)
+			p2 := extractParam(code, instrucPtr+2, inst.ParameterMode2)
+			// fmt.Printf("jump-if-true params %d, %d\n", p1, p2)
+			if p1 != 0 {
+				instrucPtr = p2
+			} else {
+				instrucPtr += 3 //move to next opcode
+			}
+		case 6:
+			/*
+				Opcode 6 is jump-if-false: if the first parameter is zero, it sets the instruction pointer to the value from the second parameter. Otherwise, it does nothing.
+			*/
+			// fmt.Printf("jump-if-false at %d - %d\n", instrucPtr, code[instrucPtr])
+			p1 := extractParam(code, instrucPtr+1, inst.ParameterMode1)
+			p2 := extractParam(code, instrucPtr+2, inst.ParameterMode2)
+			// fmt.Printf("jump-if-false params %d, %d\n", p1, p2)
+			if p1 == 0 {
+				instrucPtr = p2
+			} else {
+				instrucPtr += 3 //move to next opcode
+			}
+		case 7:
+			/*
+				Opcode 7 is less than: if the first parameter is less than the second parameter, it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+			*/
+			// fmt.Printf("is-less-than at %d - %d\n", instrucPtr, code[instrucPtr])
+			p1 := extractParam(code, instrucPtr+1, inst.ParameterMode1)
+			p2 := extractParam(code, instrucPtr+2, inst.ParameterMode2)
+			outLoc := code[instrucPtr+3]
+			// fmt.Printf("is-equals params %d, %d, %d\n", p1, p2, outLoc)
+			if p1 < p2 {
+				code[outLoc] = 1
+			} else {
+				code[outLoc] = 0
+			}
+			instrucPtr += 4 //move to next opcode
+		case 8:
+			/*
+				Opcode 8 is equals: if the first parameter is equal to the second parameter, it stores 1 in the position given by the third parameter. Otherwise, it stores 0.
+			*/
+			// fmt.Printf("is-equals at %d - %d\n", instrucPtr, code[instrucPtr])
+			p1 := extractParam(code, instrucPtr+1, inst.ParameterMode1)
+			p2 := extractParam(code, instrucPtr+2, inst.ParameterMode2)
+			outLoc := code[instrucPtr+3]
+			// fmt.Printf("is-equals params %d, %d, %d (%v)\n", p1, p2, outLoc, inst)
+			if p1 == p2 {
+				code[outLoc] = 1
+			} else {
+				code[outLoc] = 0
+			}
+			instrucPtr += 4 //move to next opcode
 		case 99:
 			//end of program
 			// fmt.Println("Program Ended at Location:", instrucPtr)
@@ -119,7 +174,7 @@ func runIntCode(input, code []int) ([]int, []int, error) {
 		default:
 			return nil, nil, fmt.Errorf("Error invalid opcode %v at %d", code[instrucPtr], instrucPtr)
 		}
-		// fmt.Println(i, input)
+		// fmt.Println(instrucPtr, code)
 	}
 
 	return nil, nil, fmt.Errorf("Max Interations Reached %v", maxIterations)
@@ -161,8 +216,8 @@ func processInput(f io.Reader) string {
 		log.Fatal("Scan() - ", err)
 	}
 
-	//Input a 1 as suggested for the diagnostics
-	inputs := []int{1}
+	//Input 5 for the Radiator Controller
+	inputs := []int{5}
 
 	//run intcode program to get output
 	_, outputs, err := runIntCode(inputs, intProgramSlice)
