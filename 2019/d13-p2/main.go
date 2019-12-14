@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
+	"time"
 )
 
 type Instruction struct {
@@ -100,44 +102,7 @@ func writeToMemory(mem []int, index, value int) []int {
 	return mem
 }
 
-func runIntCode(inputs, code []int) ([]int, []int, error) {
-	in := make(chan int, len(inputs)) //Buffer the inputs so we don't have to wait on them
-	out := make(chan int)
-	exitcode := make(chan int)
-	errors := make(chan error, 0)
-
-	go runIntCodeChans(code, in, out, exitcode, errors)
-
-	//Send all the inputs to the channel
-	for _, input := range inputs {
-		fmt.Println("Input: ", input)
-		in <- input
-	}
-
-	outputs := []int{}
-
-	for {
-		select {
-		case v, ok := <-out:
-			if !ok {
-				// fmt.Println("ch", v, ok)
-				return code, outputs, nil
-			}
-			outputs = append(outputs, v)
-		case e := <-errors:
-			// fmt.Println("Error", e)
-			return code, outputs, e
-		case v := <-exitcode:
-			fmt.Println("Exited with ", v)
-			return code, outputs, nil
-		}
-
-	}
-
-	return code, outputs, nil
-}
-
-func runIntCodeChans(code []int, input, output, exitcode chan int, errors chan error) {
+func runIntCodeChans(code []int, output chan int, input chan int, inputRequest chan bool, exitcode chan int, errors chan error) {
 	//Start at location 0 for the opcode
 	instrucPtr := 0
 
@@ -198,6 +163,9 @@ func runIntCodeChans(code []int, input, output, exitcode chan int, errors chan e
 			}
 
 			// fmt.Printf("Input at %d (%v)(%v)(%v) %d into %d\n", instrucPtr, code[instrucPtr], inst, code[instrucPtr+1], x, p1_loc)
+
+			//Request an input
+			inputRequest <- true
 
 			//Read input from the channel
 			x = <-input
@@ -324,54 +292,46 @@ func processInput(f io.Reader) string {
 	g.screen = make(map[xy]int)
 
 	in := make(chan int)
-	out := make(chan int) //allow all three outputs in buffer?
+	inputRequest := make(chan bool)
+	out := make(chan int)
 	exitcode := make(chan int)
-	exituser := make(chan int)
 	errors := make(chan error)
 
-	go runIntCodeChans(intProgramSlice, in, out, exitcode, errors)
-	go func(in chan int, exit chan int, g *gameState) {
+	go runIntCodeChans(intProgramSlice, out, in, inputRequest, exitcode, errors)
 
-		reader := bufio.NewReader(os.Stdin)
-
+	go func() {
+		//Handle the inputs
 		for {
-			char, _, err := reader.ReadRune()
+			select {
+			case b, ok := <-inputRequest:
+				if !ok {
+					fmt.Println("InputRequest", b, ok)
+					return
+				}
+				if b {
+					//WARNING hideous solution, wait 1 millisecond for the game state to be updated before calculating paddle direction
+					//Can't think of the right answer to fix this right now :(
+					//Would have expected the state to be updated before this can run due to mutexes?
+					//but for some reason it doesn't seem to be, or something else I don't understand is going on.
+					time.Sleep(1 * time.Millisecond)
+					in <- g.suggestPaddleDirection()
+				} else {
+					fmt.Println("Invalid Input Request")
+					return
+				}
 
-			if err != nil {
-				fmt.Println(err)
-			}
-
-			// fmt.Println(char)
-
-			switch char {
-			case 'a':
-				in <- -1
-			case 's':
-				in <- 0
-			case 'd':
-				in <- 1
-
-			case 'x':
-				exit <- 1
-				close(exit)
-				return
 			}
 		}
+	}()
 
-	}(in, exituser, &g)
-
-	// go func(g *gameState) {
-	// 	for {
-
-	// 	}
-
-	// }(&g)
 	//Output instructions are x, y, id
 	x := 0
 	y := 0
 	id := 0
 	instCounter := 0
 	outputCount := 0
+	ballX := 0
+	paddleX := 0
 
 	for {
 		select {
@@ -380,6 +340,7 @@ func processInput(f io.Reader) string {
 				fmt.Println("ch", inst, ok)
 				return "NOTOK"
 			}
+
 			if instCounter == 0 {
 				x = inst
 				instCounter++
@@ -392,19 +353,20 @@ func processInput(f io.Reader) string {
 				instCounter = 0
 				if outputCount > 879 {
 					//Only output the state when we've got the initial
-					g.Print()
-					fmt.Println(outputCount)
+					if ballX != g.ballX {
+						// g.Print()
+						ballX = g.ballX
+					}
+					if paddleX != g.paddleX {
+						paddleX = g.paddleX
+					}
 				}
 				outputCount++
-
 			}
 
 		case e := <-errors:
 			fmt.Println("Int Code Error", e)
 			panic("error")
-		case _ = <-exituser:
-			fmt.Println("User Exit ")
-			return fmt.Sprintf("Score: %v", g.score())
 		case _ = <-exitcode:
 			// fmt.Println("Exited with ")
 			g.Print()
@@ -417,16 +379,46 @@ func processInput(f io.Reader) string {
 }
 
 type gameState struct {
-	screen map[xy]int
+	screen  map[xy]int
+	ballX   int
+	paddleX int
+	mux     sync.Mutex
 }
 
 func (g *gameState) updateState(x, y, id int) {
+	g.mux.Lock()
 	g.screen[xy{x, y}] = id
+
+	if id == 3 {
+		g.paddleX = x
+	} else if id == 4 {
+		g.ballX = x
+		// g.Print()
+	}
+	g.mux.Unlock()
 }
 func (g *gameState) score() int {
+	g.mux.Lock()
+	defer g.mux.Unlock()
 	return g.screen[xy{-1, 0}]
 }
+
+func (g *gameState) suggestPaddleDirection() int {
+	g.mux.Lock()
+	defer g.mux.Unlock()
+	if g.ballX < g.paddleX {
+		return -1
+	} else if g.ballX > g.paddleX {
+		return 1
+	}
+
+	return 0
+}
+
 func (g *gameState) Print() {
+	g.mux.Lock()
+	paddleX := 0
+	ballX := 0
 	for y := 0; y < 20; y++ {
 		for x := 0; x < 44; x++ {
 			switch g.screen[xy{x, y}] {
@@ -438,15 +430,18 @@ func (g *gameState) Print() {
 				fmt.Printf("+")
 			case 3:
 				fmt.Printf("-")
+				paddleX = x
 			case 4:
 				fmt.Printf("o")
+				ballX = x
 
 			}
 
 		}
 		fmt.Println()
 	}
-	fmt.Println("SCORE:", g.score())
+	g.mux.Unlock()
+	fmt.Printf("SCORE:%d (ballX: %v, PaddleX %v) Direction: %d\n", g.score(), ballX, paddleX, g.suggestPaddleDirection())
 }
 
 type xy struct {
