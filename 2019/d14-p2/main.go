@@ -100,11 +100,11 @@ func (lab *reactionLab) useOrMake(chem string, count int) {
 	if lab.chemCount[chem] < count {
 		//We don't have enough of this chemical, we'll need to make some more
 		amountNeeded := count - lab.chemCount[chem]
-		amountToProduce := 0
-		reactionsNeeded := 0
-		for amountToProduce < amountNeeded {
-			amountToProduce += lab.chemList[chem].outputCount
+		reactionsNeeded := (amountNeeded / lab.chemList[chem].outputCount)
+		amountToProduce := reactionsNeeded * lab.chemList[chem].outputCount
+		if amountToProduce < amountNeeded {
 			reactionsNeeded++
+			amountToProduce += lab.chemList[chem].outputCount
 		}
 		// fmt.Printf("We need to run this reaction %d times\n", reactionsNeeded)
 
@@ -129,12 +129,12 @@ func max(a, b int64) int64 {
 }
 
 func (lab *reactionLab) howMuchFuel(totalToConsume int) int {
-	startTime := time.Now().Unix()
+	startTime := time.Now()
 	lastConsumed := 0
 	consumedPerLoop := 0
 	stillToConsume := totalToConsume
 
-	fuelPerI := 100
+	fuelPerI := 10000
 	fuelMade := 0
 	maxIter := 50000
 	for i := 0; i < maxIter; i++ {
@@ -143,7 +143,8 @@ func (lab *reactionLab) howMuchFuel(totalToConsume int) int {
 
 		stillToConsume = totalToConsume - lab.oreConsumed
 		if stillToConsume < 0 {
-			return fuelMade - 1 // We make slightly too much here, but can make almost that amount
+			break
+
 		}
 		consumedPerLoop = lab.oreConsumed - lastConsumed
 		if consumedPerLoop > stillToConsume {
@@ -152,15 +153,18 @@ func (lab *reactionLab) howMuchFuel(totalToConsume int) int {
 		}
 		lastConsumed = lab.oreConsumed
 
-		if i%1000 == 0 {
-			fmt.Printf("Iteration: %d, Still to Consume: %d \n", i, totalToConsume-lab.oreConsumed)
-			if i > 0 && i%1000 == 0 {
-				t := time.Now().Unix()
-				fmt.Printf("Calculated %d times %d ore/second\n", i, int64(lab.oreConsumed)/max((t-startTime), 1))
-			}
-		}
+		// if i%1000 == 0 {
+		// 	fmt.Printf("Iteration: %d, Still to Consume: %d \n", i, totalToConsume-lab.oreConsumed)
+		// 	if i > 0 && i%1000 == 0 {
+		// 		t := time.Now().Unix()
+		// 		fmt.Printf("Calculated %d times %d ore/second\n", i, int64(lab.oreConsumed)/max((t-startTime), 1))
+		// 	}
+		// }
 	}
-	return 0
+
+	t := time.Now()
+	fmt.Printf("Calculated result in %v\n", t.Sub(startTime))
+	return fuelMade - 1 // We make slightly too much here, but can make almost that amount, so 1 less should do it
 }
 
 func processInput(f io.Reader) string {
@@ -186,7 +190,7 @@ func processInput(f io.Reader) string {
 	}
 
 	p := lab.howMuchFuel(1000000000000)
-	fmt.Println(lab)
+	// fmt.Println(lab)
 
 	return fmt.Sprintf("%d", p)
 }
