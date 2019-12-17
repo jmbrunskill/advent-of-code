@@ -1,0 +1,7 @@
+32char input
+
+*Without Zero Elimination*
+Calculated phase 0 in 2m37.2550097s
+*With Zero Elimination*
+Calculated phase 0 in 46.1060023s
+
