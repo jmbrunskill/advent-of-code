@@ -4,4 +4,13 @@
 Calculated phase 0 in 2m37.2550097s
 *With Zero Elimination*
 Calculated phase 0 in 46.1060023s
+*With Concurrency*
+Calculated phase 0 in 12.6369997s
 
+
+
+Array Length: 6500000
+
+Calculated phase 0 in 1h23m54.6830615s
+Calculated phase 1 in 1h29m17.1169993s
+Calculated result for 2 in 2h53m11.8830632s

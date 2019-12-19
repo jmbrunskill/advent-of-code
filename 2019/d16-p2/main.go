@@ -18,10 +18,11 @@ func main() {
 	defer f.Close()
 
 	//Print the result
-	fmt.Println(processInput(f, 100))
+	// fmt.Println(processInput(f, 100, 10000, false))
+	fmt.Println(processInput(f, 6, 1000, false))
 }
 
-func applyMultipliers(pos, needed int, inputs *[650 * 10000]int) int {
+func applyMultipliers(pos, needed int, inputs *[650 * 10000]int, outputs *[650 * 10000]int) {
 	// fmt.Printf("applyMultipliers(%d,%d,[])\n", pos, needed)
 	sum := 0
 	loc := 0
@@ -55,10 +56,11 @@ func applyMultipliers(pos, needed int, inputs *[650 * 10000]int) int {
 		repeats++
 	}
 	// fmt.Println()
-	return abs(sum) % 10
+	outputs[pos-1] = abs(sum) % 10
+	return
 }
 
-func processInput(f io.Reader, phases int) string {
+func processInput(f io.Reader, phases int, repeats int, offsetMode bool) string {
 	s := bufio.NewScanner(f)
 	s.Split(bufio.ScanRunes)
 
@@ -76,19 +78,23 @@ func processInput(f io.Reader, phases int) string {
 		inputs = append(inputs, d)
 	}
 
-	offset := ""
-	for i := 0; i < 7; i++ {
-		offset += strconv.Itoa(inputs[i])
+	outputOffset := 0
+	var err error
+	if offsetMode {
+		offset := ""
+		for i := 0; i < 7; i++ {
+			offset += strconv.Itoa(inputs[i])
+		}
+		outputOffset, err = strconv.Atoi(offset)
+		if err != nil {
+			panic(offset)
+		}
 	}
 
-	outputOffset, err := strconv.Atoi(offset)
-	if err != nil {
-		panic(offset)
-	}
 	fmt.Println("Offset:", outputOffset)
 
 	//always repeat the input 1000 times
-	arrayLen := len(inputs) * 10000
+	arrayLen := len(inputs) * repeats
 	fmt.Println("Array Length:", arrayLen)
 
 	var newInputs [650 * 10000]int
@@ -98,18 +104,42 @@ func processInput(f io.Reader, phases int) string {
 	}
 	printSome(&newInputs, outputOffset)
 
+	//SETUP CHANNELS
+	calcRequests := make(chan calcRequest, 10)
+	calcDone := make(chan int, 10)
+	phaseDone := make(chan int, 0)
+	//SETUP WORKERS
+	for i := 0; i < 8; i++ {
+		go asyncApplyMultipliers(calcRequests, calcDone)
+
+	}
+
+	pos := -1
 	a := &newInputs
 	b := &newOutputs
 	tmp := &newInputs
 
 	for i := 0; i < phases; i++ {
 		startTime := time.Now()
+		go func() {
+			for j := 0; j < arrayLen; j++ {
+				//Wait for the calcs to be done (just count how many)
+				pos = <-calcDone
+				_ = pos
+			}
+			phaseDone <- 0
+		}()
 		for j := 0; j < arrayLen; j++ {
-			b[j] = applyMultipliers(j+1, arrayLen, a)
+			// b[j] = applyMultipliers(j+1, arrayLen, a, b)
+			calcRequests <- calcRequest{j + 1, arrayLen, a, b}
 		}
-		// fmt.Print(".")
+		pos = <-phaseDone
+		_ = pos
+
+		// printSome(b, outputOffset)
+		printLots(b, 0, arrayLen, len(inputs)*4*(i+1))
+
 		//Swap the arrays over
-		printSome(b, outputOffset)
 		tmp = a
 		a = b
 		b = tmp
@@ -128,8 +158,42 @@ func processInput(f io.Reader, phases int) string {
 	return fmt.Sprintf("%v", str)
 }
 
+type calcRequest struct {
+	pos     int
+	needed  int
+	inputs  *[650 * 10000]int
+	outputs *[650 * 10000]int
+}
+
+func asyncApplyMultipliers(calcs chan calcRequest, done chan int) {
+	for {
+		c, more := <-calcs
+		if more {
+			// fmt.Println("received job", c)
+			applyMultipliers(c.pos, c.needed, c.inputs, c.outputs)
+			done <- c.pos
+		} else {
+			// fmt.Println("Exiting")
+			return
+		}
+	}
+	// return
+}
+
+func printLots(input *[650 * 10000]int, offset, total, split int) {
+
+	for i := offset; i < offset+total; i++ {
+		if i%split == 0 {
+			//Split the input on a period to help see patterns
+			fmt.Printf("\ni:%03d:", i)
+		}
+		fmt.Printf("%d", input[i])
+	}
+	fmt.Println()
+}
+
 func printSome(input *[650 * 10000]int, offset int) {
-	for i := 0 + offset; i < offset+10; i++ {
+	for i := 0 + offset; i < offset+8; i++ {
 		fmt.Printf("%d", input[i])
 	}
 	fmt.Println()
@@ -140,4 +204,31 @@ func abs(x int) int {
 		return -x
 	}
 	return x
+}
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+// greatest common divisor (GCD) via Euclidean algorithm
+func GCD(a, b int) int {
+	for b != 0 {
+		t := b
+		b = a % b
+		a = t
+	}
+	return a
+}
+
+// find Least Common Multiple (LCM) via GCD
+func LCM(a, b int, integers ...int) int {
+	result := a * b / GCD(a, b)
+
+	for i := 0; i < len(integers); i++ {
+		result = LCM(result, integers[i])
+	}
+
+	return result
 }

@@ -7,20 +7,42 @@ import (
 	"testing"
 )
 
-func TestProcessInput(t *testing.T) {
+func TestOldProcessInput(t *testing.T) {
 
 	tt := []struct {
 		input    string
+		phases   int
 		expected string
 	}{
-		{"03036732577212944063491565474664", "84462026"},
+		{"12345678", 4, "01029498"},
+		{"80871224585914546619083218645595", 100, "24176176"},
 	}
 
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%v->%v", tc.input, tc.expected), func(t *testing.T) {
-			// phases := 100
-			phases := 1
-			fft := processInput(strings.NewReader(tc.input), phases)
+			fft := processInput(strings.NewReader(tc.input), tc.phases, 1, false)
+			if fft != tc.expected {
+				t.Fatalf("expected %v; got %v", tc.expected, fft)
+			}
+		})
+	}
+
+}
+func TestProcessInput(t *testing.T) {
+
+	tt := []struct {
+		input    string
+		phases   int
+		repeats  int
+		expected string
+	}{
+		{"03036732577212944063491565474664", 1, 100, "05259402"},
+		// {"03036732577212944063491565474664", 100, 10000, "84462026"},
+	}
+
+	for _, tc := range tt {
+		t.Run(fmt.Sprintf("%v->%v", tc.input, tc.expected), func(t *testing.T) {
+			fft := processInput(strings.NewReader(tc.input), tc.phases, tc.repeats, true)
 			if fft != tc.expected {
 				t.Fatalf("expected %v; got %v", tc.expected, fft)
 			}
@@ -45,17 +67,18 @@ func TestApplyMultipliers(t *testing.T) {
 	}
 
 	var inputs [650 * 10000]int
+	var outputs [650 * 10000]int
 	for i := 0; i < 8; i++ {
 		inputs[i] = i + 1
 	}
-	printSome(&inputs, 0)
+	// printSome(&inputs, 0)
 
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%d,%d", tc.pos, tc.needed), func(t *testing.T) {
-			result := applyMultipliers(tc.pos, tc.needed, &inputs)
+			applyMultipliers(tc.pos, tc.needed, &inputs, &outputs)
 
-			if !reflect.DeepEqual(tc.expected, result) {
-				t.Fatalf("expected %v; got %v", tc.expected, result)
+			if !reflect.DeepEqual(tc.expected, outputs[tc.pos-1]) {
+				t.Fatalf("expected %v; got %v", tc.expected, outputs[tc.pos-1])
 			}
 		})
 	}
