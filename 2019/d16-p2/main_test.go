@@ -56,26 +56,38 @@ func TestApplyMultipliers(t *testing.T) {
 		needed   int
 		expected int
 	}{
-		{1, 8, 4},
-		{2, 8, 8},
-		{3, 8, 2},
-		{4, 8, 2},
+		// {1, 8, 4},
+		// {2, 8, 8},
+		// {3, 8, 2},
+		// {4, 8, 2},
 		{5, 8, 6},
 		{6, 8, 1},
 		{7, 8, 5},
 		{8, 8, 8},
 	}
 
+	arrayLen := 8
 	var inputs [650 * 10000]int
 	var outputs [650 * 10000]int
-	for i := 0; i < 8; i++ {
+	for i := 0; i < arrayLen; i++ {
 		inputs[i] = i + 1
+		// fmt.Printf("%d,", inputs[i])
 	}
-	// printSome(&inputs, 0)
+
+	var cusum [650 * 10000]int
+	currentSum := 0
+	// fmt.Println("CUSUM:")
+	for j := 0; j < arrayLen; j++ {
+		//Create a cusum array
+		currentSum += inputs[j]
+		cusum[j] = currentSum
+		// fmt.Printf("%d,", cusum[j])
+	}
+	// fmt.Println()
 
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%d,%d", tc.pos, tc.needed), func(t *testing.T) {
-			applyMultipliers(tc.pos, tc.needed, &inputs, &outputs)
+			applyMultipliers(tc.pos, tc.needed, &inputs, &outputs, &cusum)
 
 			if !reflect.DeepEqual(tc.expected, outputs[tc.pos-1]) {
 				t.Fatalf("expected %v; got %v", tc.expected, outputs[tc.pos-1])
