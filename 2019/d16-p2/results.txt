@@ -1,4 +1,4 @@
-32char input
+Array Length: 3200000
 
 *Without Zero Elimination*
 Calculated phase 0 in 2m37.2550097s
@@ -10,7 +10,18 @@ Calculated phase 0 in 12.6369997s
 
 
 Array Length: 6500000
-
+*With Concurrency*
 Calculated phase 0 in 1h23m54.6830615s
 Calculated phase 1 in 1h29m17.1169993s
-Calculated result for 2 in 2h53m11.8830632s
+
+*With CuSum Array (no Concurrency)
+Array Length: 6500000
+Calculated phase 0 in 3.0959852s
+Calculated phase 1 in 3.0410157s
+
+*With CuSum Array (With Concurrency)
+Array Length: 6500000
+Array Length: 6500000
+Calculated phase 0 in 3.2339986s
+Calculated phase 1 in 3.2429978s
+
