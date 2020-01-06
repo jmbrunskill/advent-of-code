@@ -18,10 +18,10 @@ func main() {
 	defer f.Close()
 
 	//Print the result
-	fmt.Println(processInput(f, 100, 10000, false))
+	fmt.Println(processInput(f, 100, 10000, true))
 }
 
-func applyMultipliers(pos, inputLength int, inputs *[651 * 10000]int, outputs *[651 * 10000]int, cusum *[651 * 10000]int) {
+func applyMultipliers(pos, inputLength int, inputs *[650 * 10000]int, outputs *[650 * 10000]int, cusum *[650 * 10000]int) {
 	// fmt.Printf("applyMultipliers(%d,%d,[])\n", pos, inputLength)
 	sum := 0
 	innerSum := 0
@@ -96,9 +96,9 @@ func processInput(f io.Reader, phases int, repeats int, offsetMode bool) string 
 	arrayLen := len(inputs) * repeats
 	fmt.Println("Array Length:", arrayLen)
 
-	var newInputs [651 * 10000]int
-	var newOutputs [651 * 10000]int
-	var cusum [651 * 10000]int
+	var newInputs [650 * 10000]int
+	var newOutputs [650 * 10000]int
+	var cusum [650 * 10000]int
 	for i := 0; i < arrayLen; i++ {
 		newInputs[i] = inputs[i%len(inputs)]
 	}
@@ -170,9 +170,9 @@ func processInput(f io.Reader, phases int, repeats int, offsetMode bool) string 
 type calcRequest struct {
 	pos     int
 	needed  int
-	inputs  *[651 * 10000]int
-	outputs *[651 * 10000]int
-	cusum   *[651 * 10000]int
+	inputs  *[650 * 10000]int
+	outputs *[650 * 10000]int
+	cusum   *[650 * 10000]int
 }
 
 func asyncApplyMultipliers(calcs chan calcRequest, done chan int) {
@@ -190,7 +190,7 @@ func asyncApplyMultipliers(calcs chan calcRequest, done chan int) {
 	// return
 }
 
-func printLots(input *[651 * 10000]int, offset, total, split int) {
+func printLots(input *[650 * 10000]int, offset, total, split int) {
 
 	for i := offset; i < offset+total; i++ {
 		if i%split == 0 {
@@ -202,7 +202,7 @@ func printLots(input *[651 * 10000]int, offset, total, split int) {
 	fmt.Println()
 }
 
-func printSome(input *[651 * 10000]int, offset int) {
+func printSome(input *[650 * 10000]int, offset int) {
 	for i := 0 + offset; i < offset+8; i++ {
 		fmt.Printf("%d,", input[i])
 	}
