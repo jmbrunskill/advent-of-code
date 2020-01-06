@@ -36,8 +36,10 @@ func TestProcessInput(t *testing.T) {
 		repeats  int
 		expected string
 	}{
-		{"03036732577212944063491565474664", 1, 100, "05259402"},
-		// {"03036732577212944063491565474664", 100, 10000, "84462026"},
+		// {"03036732577212944063491565474664", 1, 10000, "61706040"},
+		{"03036732577212944063491565474664", 100, 10000, "84462026"},
+		{"02935109699940807407585447034323", 100, 10000, "78725270"},
+		{"03081770884921959731165446850517", 100, 10000, "53553731"},
 	}
 
 	for _, tc := range tt {
@@ -66,16 +68,28 @@ func TestApplyMultipliers(t *testing.T) {
 		{8, 8, 8},
 	}
 
+	arrayLen := 8
 	var inputs [650 * 10000]int
 	var outputs [650 * 10000]int
-	for i := 0; i < 8; i++ {
+	for i := 0; i < arrayLen; i++ {
 		inputs[i] = i + 1
+		// fmt.Printf("%d,", inputs[i])
 	}
-	// printSome(&inputs, 0)
+
+	var cusum [650 * 10000]int
+	currentSum := 0
+	// fmt.Println("CUSUM:")
+	for j := 0; j < arrayLen; j++ {
+		//Create a cusum array
+		currentSum += inputs[j]
+		cusum[j] = currentSum
+		// fmt.Printf("%d,", cusum[j])
+	}
+	// fmt.Println()
 
 	for _, tc := range tt {
 		t.Run(fmt.Sprintf("%d,%d", tc.pos, tc.needed), func(t *testing.T) {
-			applyMultipliers(tc.pos, tc.needed, &inputs, &outputs)
+			applyMultipliers(tc.pos, tc.needed, &inputs, &outputs, &cusum)
 
 			if !reflect.DeepEqual(tc.expected, outputs[tc.pos-1]) {
 				t.Fatalf("expected %v; got %v", tc.expected, outputs[tc.pos-1])

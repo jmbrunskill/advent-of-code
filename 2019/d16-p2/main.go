@@ -18,43 +18,42 @@ func main() {
 	defer f.Close()
 
 	//Print the result
-	// fmt.Println(processInput(f, 100, 10000, false))
-	fmt.Println(processInput(f, 6, 1000, false))
+	fmt.Println(processInput(f, 100, 10000, true))
 }
 
-func applyMultipliers(pos, needed int, inputs *[650 * 10000]int, outputs *[650 * 10000]int) {
-	// fmt.Printf("applyMultipliers(%d,%d,[])\n", pos, needed)
+func applyMultipliers(pos, inputLength int, inputs *[650 * 10000]int, outputs *[650 * 10000]int, cusum *[650 * 10000]int) {
+	// fmt.Printf("applyMultipliers(%d,%d,[])\n", pos, inputLength)
 	sum := 0
-	loc := 0
-	repeats := 1
+	innerSum := 0
 
-	for i := 0; i < needed; i++ {
-		// fmt.Printf("L i %d, repeats %d, pos %d, loc %d\n", i, repeats, pos, loc)
-		if repeats >= pos {
-			repeats = 0
-			loc++
-			loc = loc % 4 //len(pattern)
-			// fmt.Printf("New Location: i %d, repeats %d, pos %d, loc %d\n", i, repeats, pos, loc)
-		}
+	onesStartLocation := pos - 1
+	onesEndLocation := (2 * pos) - 2
+	negative := false
 
-		switch loc {
-		case 1:
-			//* by 1
-			// fmt.Printf("+ %d * %d (%v,%v)\n", inputs[i], pattern[loc], loc, i)
-			sum += inputs[i]
-		case 3:
-			//* by -1
-			// fmt.Printf("+ %d * %d (%v,%v)\n", inputs[i], pattern[loc], loc, i)
-			sum -= inputs[i]
-		default:
-			//This is a zero, we can skip ahead as there's no point adding up zeros
-			// skip := (pos - repeats - 1)
-			i += (pos - repeats - 1)
-			repeats = (pos - 1) //This is about to be incremented...
-			// fmt.Printf("i:%d loc:%d Skipping Ahead %d pos %d repeats %d\n", i, loc, skip, pos, repeats)
+	for onesEndLocation < inputLength {
+		if onesStartLocation == 0 {
+			innerSum = cusum[onesEndLocation]
+		} else {
+			innerSum = cusum[onesEndLocation] - cusum[onesStartLocation-1]
 		}
-		repeats++
+		if negative {
+			sum -= innerSum
+		} else {
+			sum += innerSum
+		}
+		onesStartLocation = onesEndLocation + pos + 1
+		onesEndLocation = onesStartLocation + pos - 1
+		negative = !negative
 	}
+	if onesStartLocation < inputLength && onesEndLocation >= inputLength {
+		innerSum = cusum[inputLength-1] - cusum[onesStartLocation-1]
+		if negative {
+			sum -= innerSum
+		} else {
+			sum += innerSum
+		}
+	}
+
 	// fmt.Println()
 	outputs[pos-1] = abs(sum) % 10
 	return
@@ -99,17 +98,19 @@ func processInput(f io.Reader, phases int, repeats int, offsetMode bool) string 
 
 	var newInputs [650 * 10000]int
 	var newOutputs [650 * 10000]int
+	var cusum [650 * 10000]int
 	for i := 0; i < arrayLen; i++ {
 		newInputs[i] = inputs[i%len(inputs)]
 	}
-	printSome(&newInputs, outputOffset)
+	// printSome(&newInputs, outputOffset)
 
 	//SETUP CHANNELS
 	calcRequests := make(chan calcRequest, 10)
 	calcDone := make(chan int, 10)
 	phaseDone := make(chan int, 0)
 	//SETUP WORKERS
-	for i := 0; i < 8; i++ {
+	//After adding the cusum array, the concurrency actually slows this down...
+	for i := 0; i < 1; i++ {
 		go asyncApplyMultipliers(calcRequests, calcDone)
 
 	}
@@ -121,6 +122,14 @@ func processInput(f io.Reader, phases int, repeats int, offsetMode bool) string 
 
 	for i := 0; i < phases; i++ {
 		startTime := time.Now()
+		currentSum := 0
+		for j := 0; j < arrayLen; j++ {
+			//Create a cusum array
+			currentSum += a[j]
+			cusum[j] = currentSum
+			// printSome(&cusum, 0)
+		}
+
 		go func() {
 			for j := 0; j < arrayLen; j++ {
 				//Wait for the calcs to be done (just count how many)
@@ -131,13 +140,13 @@ func processInput(f io.Reader, phases int, repeats int, offsetMode bool) string 
 		}()
 		for j := 0; j < arrayLen; j++ {
 			// b[j] = applyMultipliers(j+1, arrayLen, a, b)
-			calcRequests <- calcRequest{j + 1, arrayLen, a, b}
+			calcRequests <- calcRequest{j + 1, arrayLen, a, b, &cusum}
 		}
 		pos = <-phaseDone
 		_ = pos
 
 		// printSome(b, outputOffset)
-		printLots(b, 0, arrayLen, len(inputs)*4*(i+1))
+		// printLots(b, 0, arrayLen, len(inputs)*4*(i+1))
 
 		//Swap the arrays over
 		tmp = a
@@ -163,6 +172,7 @@ type calcRequest struct {
 	needed  int
 	inputs  *[650 * 10000]int
 	outputs *[650 * 10000]int
+	cusum   *[650 * 10000]int
 }
 
 func asyncApplyMultipliers(calcs chan calcRequest, done chan int) {
@@ -170,7 +180,7 @@ func asyncApplyMultipliers(calcs chan calcRequest, done chan int) {
 		c, more := <-calcs
 		if more {
 			// fmt.Println("received job", c)
-			applyMultipliers(c.pos, c.needed, c.inputs, c.outputs)
+			applyMultipliers(c.pos, c.needed, c.inputs, c.outputs, c.cusum)
 			done <- c.pos
 		} else {
 			// fmt.Println("Exiting")
@@ -194,7 +204,7 @@ func printLots(input *[650 * 10000]int, offset, total, split int) {
 
 func printSome(input *[650 * 10000]int, offset int) {
 	for i := 0 + offset; i < offset+8; i++ {
-		fmt.Printf("%d", input[i])
+		fmt.Printf("%d,", input[i])
 	}
 	fmt.Println()
 }
@@ -210,25 +220,4 @@ func min(x, y int) int {
 		return x
 	}
 	return y
-}
-
-// greatest common divisor (GCD) via Euclidean algorithm
-func GCD(a, b int) int {
-	for b != 0 {
-		t := b
-		b = a % b
-		a = t
-	}
-	return a
-}
-
-// find Least Common Multiple (LCM) via GCD
-func LCM(a, b int, integers ...int) int {
-	result := a * b / GCD(a, b)
-
-	for i := 0; i < len(integers); i++ {
-		result = LCM(result, integers[i])
-	}
-
-	return result
 }
