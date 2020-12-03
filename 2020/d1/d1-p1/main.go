@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -19,14 +20,12 @@ func main() {
 	fmt.Println(processInput(f))
 }
 
-func mult2020_3(expenses []int) int {
+func mult2020(expenses []int) int {
 
 	for i := 0; i < len(expenses); i++ {
-		for j := 1; j < len(expenses); j++ {
-			for k := 2; k < len(expenses); k++ {
-				if expenses[i]+expenses[j]+expenses[k] == 2020 {
-					return expenses[i] * expenses[j] * expenses[k]
-				}
+		for j := i + 1; j < len(expenses); j++ {
+			if expenses[i]+expenses[j] == 2020 {
+				return expenses[i] * expenses[j]
 			}
 		}
 	}
@@ -35,6 +34,8 @@ func mult2020_3(expenses []int) int {
 }
 
 func processInput(f io.Reader) string {
+	startTime := time.Now().Unix()
+
 	expenses := make([]int, 0)
 
 	s := bufio.NewScanner(f)
@@ -47,11 +48,13 @@ func processInput(f io.Reader) string {
 		}
 		expenses = append(expenses, n)
 	}
-
-	result := mult2020_3(expenses)
-
 	if err := s.Err(); err != nil {
 		log.Fatal("Scan() - ", err)
 	}
+
+	result := mult2020(expenses)
+
+	endTime := time.Now().Unix()
+	fmt.Printf("Calculated result in %d seconds\n", endTime-startTime)
 	return fmt.Sprintf("%d", result)
 }
