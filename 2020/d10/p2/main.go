@@ -54,9 +54,9 @@ func processInput(f io.Reader) string {
 
 	for _, jolts := range adapters {
 
-		//The ways to join our adaptors is the number of ways to join the adaptors to get the values up to 3 less than this
+		//The ways to join our adaptors is the sum of number of ways to join the adaptors to get the values up to 3 less than this
 		waysToGetTo[jolts] = waysToGetTo[jolts-3] + waysToGetTo[jolts-2] + waysToGetTo[jolts-1]
-		fmt.Printf("Ways to get to %d is %d\n", jolts, waysToGetTo[jolts])
+		// fmt.Printf("Ways to get to %d is %d\n", jolts, waysToGetTo[jolts])
 		maxAdaptor = jolts //Don't have to check if this is the max, as we have sorted values
 	}
 
