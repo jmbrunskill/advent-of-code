@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use std::cmp::Ordering;
+use std::str::FromStr;
 
 /*
     This is an overkill use of structs and traits
@@ -7,9 +7,8 @@ use std::cmp::Ordering;
     Which caused me to get carried away...
 */
 
-
-#[derive(Eq, PartialEq,PartialOrd, Debug)]
-enum PaperRockScissors{
+#[derive(Eq, PartialEq, PartialOrd, Debug)]
+enum PaperRockScissors {
     Paper,
     Rock,
     Scissors,
@@ -41,18 +40,18 @@ impl PaperRockScissors {
     }
 }
 
-impl Ord for PaperRockScissors{
+impl Ord for PaperRockScissors {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (PaperRockScissors::Paper, PaperRockScissors::Rock) =>Ordering::Greater,
-            (PaperRockScissors::Rock, PaperRockScissors::Scissors) =>Ordering::Greater,
-            (PaperRockScissors::Scissors, PaperRockScissors::Paper) =>Ordering::Greater,
-            (PaperRockScissors::Paper, PaperRockScissors::Scissors) =>Ordering::Less,
-            (PaperRockScissors::Rock, PaperRockScissors::Paper) =>Ordering::Less,
-            (PaperRockScissors::Scissors, PaperRockScissors::Rock) =>Ordering::Less,
-            (PaperRockScissors::Paper, PaperRockScissors::Paper) =>Ordering::Equal,
-            (PaperRockScissors::Rock, PaperRockScissors::Rock) =>Ordering::Equal,
-            (PaperRockScissors::Scissors, PaperRockScissors::Scissors) =>Ordering::Equal,
+            (PaperRockScissors::Paper, PaperRockScissors::Rock) => Ordering::Greater,
+            (PaperRockScissors::Rock, PaperRockScissors::Scissors) => Ordering::Greater,
+            (PaperRockScissors::Scissors, PaperRockScissors::Paper) => Ordering::Greater,
+            (PaperRockScissors::Paper, PaperRockScissors::Scissors) => Ordering::Less,
+            (PaperRockScissors::Rock, PaperRockScissors::Paper) => Ordering::Less,
+            (PaperRockScissors::Scissors, PaperRockScissors::Rock) => Ordering::Less,
+            (PaperRockScissors::Paper, PaperRockScissors::Paper) => Ordering::Equal,
+            (PaperRockScissors::Rock, PaperRockScissors::Rock) => Ordering::Equal,
+            (PaperRockScissors::Scissors, PaperRockScissors::Scissors) => Ordering::Equal,
         }
     }
 }
@@ -104,17 +103,16 @@ impl FromStr for PaperRockScissorsRound {
 
         let us_str = split.next().unwrap();
 
-        let us =  PaperRockScissors::from_str(us_str).unwrap();
+        let us = PaperRockScissors::from_str(us_str).unwrap();
         let goal = match us_str {
             "X" => DesiredOutcome::Lose,
             "Y" => DesiredOutcome::Draw,
             "Z" => DesiredOutcome::Win,
             _ => DesiredOutcome::Draw,
         };
-        Ok(PaperRockScissorsRound { them, us,goal })
+        Ok(PaperRockScissorsRound { them, us, goal })
     }
 }
-
 
 impl PaperRockScissorsRound {
     fn score(&self) -> i32 {
@@ -133,7 +131,7 @@ impl PaperRockScissorsRound {
 fn part1(input: &str) -> String {
     let mut total_score = 0;
 
-    for line in input.lines(){
+    for line in input.lines() {
         let round = line.parse::<PaperRockScissorsRound>().unwrap();
         total_score += round.score();
         // println!("Total: {:?} - {:?} Round Score: {}", total_score, round, round.score());
@@ -142,13 +140,11 @@ fn part1(input: &str) -> String {
     return format!("{}", total_score);
 }
 
-
 // We need to calculate the expected score with X,Y,Z being the expected outcome
 fn part2(input: &str) -> String {
-
     let mut total_score = 0;
 
-    for line in input.lines(){
+    for line in input.lines() {
         let mut round = line.parse::<PaperRockScissorsRound>().unwrap();
         // println!("{:?}", round);
         round.us = match round.goal {
@@ -170,7 +166,6 @@ fn main() {
     println!("Part1: {}", part1(&input));
     println!("Part2: {}", part2(&input));
 }
-
 
 #[cfg(test)]
 mod tests {
